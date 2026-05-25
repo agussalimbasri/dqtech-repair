@@ -69,7 +69,7 @@ function App() {
     const { data, error } = await supabase
       .from("repairs")
       .select("*")
-      .order("id", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Supabase fetch error:", error);
