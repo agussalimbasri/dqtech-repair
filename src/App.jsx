@@ -841,13 +841,13 @@ const finalForm = {
               </div>
 
               <div className="noteBox" style={styles.noteBox}>
-                <b>Nota:</b>{" "}
-                {latest.status === "Siap"
-                  ? "Peranti telah siap. Sila jelaskan baki bayaran sebelum atau semasa pengambilan peranti."
-                  : latest.status === "Sudah Ambil"
-                  ? "Peranti telah diserahkan kepada pelanggan dan bayaran telah direkodkan berdasarkan maklumat di atas."
-                  : "Harga yang dipaparkan adalah berdasarkan status semasa. Jika peranti belum diperiksa sepenuhnya, kos sebenar mungkin berubah selepas pemeriksaan lanjut dan akan dimaklumkan kepada pelanggan sebelum kerja repair diteruskan."}
-              </div>
+  <b>Nota:</b>{" "}
+  {latest.status === "Siap"
+    ? "Peranti telah siap. Sila jelaskan baki bayaran sebelum atau semasa pengambilan peranti. Warranty bermula dari tarikh peranti siap dibaiki / pelanggan dimaklumkan. Pihak kami tidak akan bertanggungjawab sekiranya berlaku kehilangan, kerosakan atau tuntutan warranty terhadap peranti yang tidak dituntut melebihi 60 hari dari tarikh pelanggan dimaklumkan bahawa peranti telah siap dibaiki."
+    : latest.status === "Sudah Ambil"
+    ? "Peranti telah diserahkan kepada pelanggan dan bayaran telah direkodkan berdasarkan maklumat di atas. Warranty dikira bermula dari tarikh peranti siap dibaiki / pelanggan dimaklumkan."
+    : "Harga yang dipaparkan adalah berdasarkan status semasa. Jika peranti belum diperiksa sepenuhnya, kos sebenar mungkin berubah selepas pemeriksaan lanjut dan akan dimaklumkan kepada pelanggan sebelum kerja repair diteruskan."}
+</div>
 
               <div style={styles.thanks}>Terima kasih kerana menggunakan servis DQ Tech 😄</div>
 
