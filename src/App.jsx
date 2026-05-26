@@ -38,6 +38,10 @@ function App() {
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
 
   const rowsPerPage = 5;
 
@@ -193,6 +197,55 @@ ${item.masa || "-"}`;
 ${masaAmbil || "-"}`;
   }
 
+
+  function parseTarikhMs(value) {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+
+    const cleanValue = String(value).trim();
+    const slashMatch = cleanValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+    if (slashMatch) {
+      const [, day, month, year] = slashMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    const dashMatch = cleanValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+
+    if (dashMatch) {
+      const [, year, month, day] = dashMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    const parsed = new Date(cleanValue);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  function getMonthValue(date) {
+    if (!date) return "";
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  function isSameSelectedMonth(value) {
+    const parsed = parseTarikhMs(value);
+    return parsed ? getMonthValue(parsed) === selectedMonth : false;
+  }
+
+  function formatRM(value) {
+    return `RM ${Number(value || 0).toLocaleString("en-MY", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  function getDashboardItemDate(item) {
+    if (item.status === "Sudah Ambil" && getTarikhAmbil(item)) return getTarikhAmbil(item);
+    return item.tarikh;
+  }
+
+  function getStatusCount(items, status) {
+    return items.filter((item) => item.status === status).length;
+  }
 
   function exportDatabaseExcel() {
     if (!data || data.length === 0) {
@@ -491,6 +544,24 @@ const finalForm = {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const paginatedResult = result.slice(startIndex, startIndex + rowsPerPage);
 
+  const monthlyData = data.filter((item) => isSameSelectedMonth(getDashboardItemDate(item)));
+  const monthlyReceivedData = data.filter((item) => isSameSelectedMonth(item.tarikh));
+  const monthlyTakenData = data.filter(
+    (item) => item.status === "Sudah Ambil" && isSameSelectedMonth(getTarikhAmbil(item))
+  );
+
+  const monthlyHargaFinal = monthlyData.reduce((total, item) => {
+    if (item.jenisHarga !== "Harga Final") return total;
+    return total + Number(getJumlahKos(item) || 0);
+  }, 0);
+
+  const monthlyDuitMasuk = monthlyData.reduce((total, item) => total + Number(item.deposit || 0), 0);
+
+  const monthlyBaki = monthlyData.reduce((total, item) => {
+    if (item.jenisHarga !== "Harga Final") return total;
+    return total + Number(item.baki || 0);
+  }, 0);
+
   const latest = editId ? data.find((item) => item.id === editId) || data[0] : data[0];
 
   if (authLoading) {
@@ -761,8 +832,14 @@ const finalForm = {
                   <h3 style={styles.boxTitle}>MAKLUMAT PELANGGAN</h3>
                   <Info label="Nama Pelanggan" value={latest.nama} />
                   <Info label="No. Telefon" value={latest.telefon} />
-                  <Info label="Tarikh Terima" value={latest.tarikh} />
-                  <Info label="Masa Terima" value={latest.masa || "-"} />
+                  <Info
+                    label={latest.status === "Sudah Ambil" ? "Tarikh Ambil" : "Tarikh Terima"}
+                    value={latest.status === "Sudah Ambil" ? getTarikhAmbil(latest) || "-" : latest.tarikh || "-"}
+                  />
+                  <Info
+                    label={latest.status === "Sudah Ambil" ? "Masa Ambil" : "Masa Terima"}
+                    value={latest.status === "Sudah Ambil" ? getMasaAmbil(latest) || "-" : latest.masa || "-"}
+                  />
                 </div>
 
                 <div style={styles.infoBox}>
@@ -866,6 +943,45 @@ const finalForm = {
           ) : (
             <div style={styles.emptyReceipt}>Belum ada data. Simpan repair dulu.</div>
           )}
+        </div>
+      </div>
+
+      <div style={styles.dashboardCard}>
+        <div style={styles.dashboardHeader}>
+          <div>
+            <h2 style={styles.dashboardTitle}>📊 DASHBOARD BULANAN</h2>
+            <p style={styles.dashboardSub}>
+              Kiraan basic guna data sedia ada. Duit masuk = bayaran/deposit yang direkod pada repair bulan dipilih.
+            </p>
+          </div>
+
+          <div style={styles.monthPickerBox}>
+            <label style={styles.monthLabel}>Pilih Bulan</label>
+            <input
+              type="month"
+              style={styles.monthInput}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div style={styles.dashboardGrid}>
+          <DashboardBox title="Repair Bulan Ini" value={monthlyReceivedData.length} note="Ikut tarikh terima" />
+          <DashboardBox title="Sudah Ambil" value={monthlyTakenData.length} note="Ikut tarikh ambil" />
+          <DashboardBox title="Duit Masuk" value={formatRM(monthlyDuitMasuk)} note="Bayaran / deposit" green />
+          <DashboardBox title="Harga Final" value={formatRM(monthlyHargaFinal)} note="Jumlah kos final" blue />
+          <DashboardBox title="Baki Tertunggak" value={formatRM(monthlyBaki)} note="Untuk harga final" red={monthlyBaki > 0} />
+          <DashboardBox title="Total Record" value={monthlyData.length} note="Data aktif dashboard" />
+        </div>
+
+        <div style={styles.statusDashboardGrid}>
+          <div style={styles.statusMiniBox}>Diterima <b>{getStatusCount(monthlyData, "Diterima")}</b></div>
+          <div style={styles.statusMiniBox}>Dalam Repair <b>{getStatusCount(monthlyData, "Dalam Repair")}</b></div>
+          <div style={styles.statusMiniBox}>Menunggu Parts <b>{getStatusCount(monthlyData, "Menunggu Parts")}</b></div>
+          <div style={styles.statusMiniBox}>Siap <b>{getStatusCount(monthlyData, "Siap")}</b></div>
+          <div style={styles.statusMiniBox}>Sudah Ambil <b>{getStatusCount(monthlyData, "Sudah Ambil")}</b></div>
+          <div style={styles.statusMiniBox}>Cancel <b>{getStatusCount(monthlyData, "Cancel Repair")}</b></div>
         </div>
       </div>
 
@@ -995,6 +1111,24 @@ const finalForm = {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DashboardBox({ title, value, note, green, blue, red }) {
+  const valueStyle = red
+    ? styles.dashboardValueRed
+    : green
+    ? styles.dashboardValueGreen
+    : blue
+    ? styles.dashboardValueBlue
+    : styles.dashboardValue;
+
+  return (
+    <div style={styles.dashboardBox}>
+      <span style={styles.dashboardBoxTitle}>{title}</span>
+      <b style={valueStyle}>{value}</b>
+      <small style={styles.dashboardNote}>{note}</small>
     </div>
   );
 }
@@ -1135,6 +1269,23 @@ blueLine: {
   iconFooter: { display: "flex", justifyContent: "center", gap: 14, color: "#475569", fontSize: 13, marginTop: 8, marginBottom: 8 },
   printBtn: { display: "block", margin: "0 auto", background: "#0057c2", color: "white", border: 0, padding: "14px 35px", borderRadius: 5, fontWeight: "bold", fontSize: 15, cursor: "pointer" },
   emptyReceipt: { textAlign: "center", padding: 80, color: "#64748b" },
+  dashboardCard: { marginTop: 25, background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 22, boxShadow: "0 4px 16px #0001" },
+  dashboardHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, marginBottom: 18, flexWrap: "wrap" },
+  dashboardTitle: { color: "#0057c2", fontSize: 20, margin: 0 },
+  dashboardSub: { margin: "6px 0 0", color: "#64748b", fontSize: 13, fontWeight: "bold" },
+  monthPickerBox: { display: "flex", alignItems: "center", gap: 10, background: "#f8fafc", border: "1px solid #dbeafe", borderRadius: 8, padding: 10 },
+  monthLabel: { color: "#0f172a", fontWeight: "bold", fontSize: 13 },
+  monthInput: { padding: "9px 12px", borderRadius: 5, border: "1px solid #cbd5e1", fontWeight: "bold", color: "#0f172a" },
+  dashboardGrid: { display: "grid", gridTemplateColumns: "repeat(6, minmax(150px, 1fr))", gap: 12 },
+  dashboardBox: { background: "#f8fafc", border: "1px solid #dbeafe", borderRadius: 8, padding: 15, minHeight: 88 },
+  dashboardBoxTitle: { display: "block", color: "#475569", fontSize: 13, fontWeight: "bold", marginBottom: 8 },
+  dashboardValue: { display: "block", color: "#0f172a", fontSize: 24 },
+  dashboardValueBlue: { display: "block", color: "#0057c2", fontSize: 24 },
+  dashboardValueGreen: { display: "block", color: "#16a34a", fontSize: 24 },
+  dashboardValueRed: { display: "block", color: "#dc2626", fontSize: 24 },
+  dashboardNote: { display: "block", color: "#64748b", marginTop: 6, fontWeight: "bold" },
+  statusDashboardGrid: { display: "grid", gridTemplateColumns: "repeat(6, minmax(130px, 1fr))", gap: 10, marginTop: 14 },
+  statusMiniBox: { background: "#eff6ff", color: "#0057c2", border: "1px solid #bfdbfe", borderRadius: 7, padding: "10px 12px", fontSize: 13, fontWeight: "bold", display: "flex", justifyContent: "space-between", gap: 8 },
   databaseCard: { marginTop: 25, background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 22, boxShadow: "0 4px 16px #0001", overflowX: "auto" },
   databaseHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, marginBottom: 15 },
   databaseTitle: { color: "#0057c2", fontSize: 18, margin: 0 },
