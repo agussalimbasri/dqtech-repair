@@ -1024,9 +1024,9 @@ const finalForm = {
                   <td>{item.nama}</td>
                   <td>
   <a
-    href={`https://wa.me/6${item.telefon
-      .replace(/^0/, "")
-      .replace(/[^0-9]/g, "")}`}
+    href={`https://wa.me/${item.telefon
+      .replace(/[^0-9]/g, "")
+      .replace(/^0/, "60")}`}
     target="_blank"
     rel="noopener noreferrer"
     style={{
