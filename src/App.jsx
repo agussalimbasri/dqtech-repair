@@ -1022,7 +1022,22 @@ const finalForm = {
                 <tr key={item.id}>
                   <td><b>{item.id}</b></td>
                   <td>{item.nama}</td>
-                  <td>{item.telefon}</td>
+                  <td>
+  <a
+    href={`https://wa.me/6${item.telefon
+      .replace(/^0/, "")
+      .replace(/[^0-9]/g, "")}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      color: "#16a34a",
+      fontWeight: "bold",
+      textDecoration: "none",
+    }}
+  >
+    {item.telefon}
+  </a>
+</td>
                   <td>{item.peranti}</td>
                   <td>{item.model}</td>
                   <td>
