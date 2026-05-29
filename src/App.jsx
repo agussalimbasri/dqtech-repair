@@ -20,6 +20,7 @@ const emptyForm = {
   anggaranMin: "",
   anggaranMax: "",
   kos: "",
+  kosKedai: "",
   deposit: "",
   status: "Diterima",
   tarikhAmbil: "",
@@ -256,6 +257,8 @@ ${masaAmbil || "-"}`;
     let totalHarga = 0;
     let totalBayaran = 0;
     let totalBaki = 0;
+    let totalKosKedai = 0;
+    let totalUntung = 0;
 
     const rows = data.map((item) => {
       const serviceItems = item.serviceItems || [];
@@ -266,6 +269,8 @@ ${masaAmbil || "-"}`;
           : 0;
 
       const bayaran = Number(item.deposit || 0);
+      const kosKedai = item.jenisHarga === "Harga Final" ? Number(item.kosKedai || 0) : 0;
+      const untung = item.jenisHarga === "Harga Final" ? harga - kosKedai : 0;
 
       const baki =
         item.jenisHarga === "Harga Final"
@@ -275,6 +280,8 @@ ${masaAmbil || "-"}`;
       totalHarga += harga;
       totalBayaran += bayaran;
       totalBaki += baki;
+      totalKosKedai += kosKedai;
+      totalUntung += untung;
 
       const butiranServis = serviceItems.length > 0
         ? serviceItems
@@ -297,6 +304,8 @@ ${masaAmbil || "-"}`;
         "Status": item.status || "",
         "Jenis Harga": item.jenisHarga || "",
         "Harga / Kos": harga,
+        "Kos Kedai / Modal": kosKedai,
+        "Untung": untung,
         "Bayaran / Deposit": bayaran,
         "Baki": baki,
         "Dokumen": getDocumentType(item),
@@ -308,6 +317,8 @@ ${masaAmbil || "-"}`;
     rows.push({
       "Jenis Harga": "JUMLAH KESELURUHAN",
       "Harga / Kos": totalHarga,
+      "Kos Kedai / Modal": totalKosKedai,
+      "Untung": totalUntung,
       "Bayaran / Deposit": totalBayaran,
       "Baki": totalBaki,
     });
@@ -326,6 +337,8 @@ ${masaAmbil || "-"}`;
       { wch: 25 }, // Status
       { wch: 20 }, // Jenis Harga
       { wch: 18 }, // Harga / Kos
+      { wch: 18 }, // Kos Kedai / Modal
+      { wch: 18 }, // Untung
       { wch: 18 }, // Bayaran / Deposit
       { wch: 18 }, // Baki
       { wch: 28 }, // Dokumen
@@ -335,10 +348,12 @@ ${masaAmbil || "-"}`;
     const totalRowNumber = rows.length + 1;
     const totalLabelCell = `J${totalRowNumber}`;
     const totalHargaCell = `K${totalRowNumber}`;
-    const totalBayaranCell = `L${totalRowNumber}`;
-    const totalBakiCell = `M${totalRowNumber}`;
+    const totalKosKedaiCell = `L${totalRowNumber}`;
+    const totalUntungCell = `M${totalRowNumber}`;
+    const totalBayaranCell = `N${totalRowNumber}`;
+    const totalBakiCell = `O${totalRowNumber}`;
 
-    [totalLabelCell, totalHargaCell, totalBayaranCell, totalBakiCell].forEach((cell) => {
+    [totalLabelCell, totalHargaCell, totalKosKedaiCell, totalUntungCell, totalBayaranCell, totalBakiCell].forEach((cell) => {
       if (worksheet[cell]) {
         worksheet[cell].s = {
           font: { bold: true },
@@ -397,9 +412,15 @@ ${masaAmbil || "-"}`;
     });
     const existingRepair = editId ? data.find((item) => item.id === editId) : null;
 
+const jumlahHargaFinal = Number(getServiceTotal(form) > 0 ? getServiceTotal(form) : form.kos || 0);
+const jumlahKosKedai = Number(form.kosKedai || 0);
+const autoHargaFinal = form.jenisHarga === "Harga Final" || jumlahHargaFinal > 0 || jumlahKosKedai > 0;
+
 const finalForm = {
   ...form,
-  kos: Number(getServiceTotal(form) > 0 ? getServiceTotal(form) : form.kos || 0),
+  jenisHarga: autoHargaFinal ? "Harga Final" : form.jenisHarga,
+  kos: jumlahHargaFinal,
+  kosKedai: jumlahKosKedai,
   deposit: Number(form.deposit || 0),
   tarikhAmbil:
     form.status === "Sudah Ambil"
@@ -412,27 +433,44 @@ const finalForm = {
 };
 
     if (editId) {
-      const { error } = await supabase
+      const updatePayload = {
+        nama: finalForm.nama || "",
+        telefon: finalForm.telefon || "",
+        peranti: finalForm.peranti || "",
+        model: finalForm.model || "",
+        masalah: finalForm.masalah || "",
+        jenisHarga: finalForm.jenisHarga,
+        kos: Number(finalForm.kos || 0),
+        kosKedai: Number(finalForm.kosKedai || 0),
+        deposit: Number(finalForm.deposit || 0),
+        baki: kiraBaki(finalForm),
+        status: finalForm.status || "Diterima",
+        anggaranMin: finalForm.anggaranMin || "",
+        anggaranMax: finalForm.anggaranMax || "",
+        serviceItems: finalForm.serviceItems || [],
+        tarikhAmbil: finalForm.tarikhAmbil || "",
+        masaAmbil: finalForm.masaAmbil || "",
+      };
+
+      const { data: updatedRepairs, error } = await supabase
         .from("repairs")
-        .update({
-          ...finalForm,
-          kos: Number(finalForm.kos || 0),
-          deposit: Number(finalForm.deposit || 0),
-          baki: kiraBaki(finalForm),
-          anggaranMin: finalForm.anggaranMin || "",
-          anggaranMax: finalForm.anggaranMax || "",
-          serviceItems: finalForm.serviceItems || [],
-          tarikhAmbil: finalForm.tarikhAmbil || "",
-          masaAmbil: finalForm.masaAmbil || "",
-        })
-        .eq("id", editId);
+        .update(updatePayload)
+        .eq("id", editId)
+        .select("*");
 
       if (error) {
         console.error("Supabase update error:", error);
-        alert("Update gagal bro. Check table column Supabase.");
+        alert(`Update gagal bro. Error: ${error.message}`);
         return;
       }
 
+      if (!updatedRepairs || updatedRepairs.length === 0) {
+        alert("Update tak jumpa rekod bro. Cuba refresh page dan tekan EDIT semula.");
+        return;
+      }
+
+      const updatedRepair = updatedRepairs[0];
+      setData((prev) => prev.map((item) => (item.id === editId ? updatedRepair : item)));
       await fetchrepairs();
       setForm(emptyForm);
       setServiceItem(emptyServiceItem);
@@ -449,24 +487,34 @@ const finalForm = {
       baki: kiraBaki(finalForm),
     };
 
-    const { error } = await supabase.from("repairs").insert([
-      {
-        ...newRepair,
-        kos: Number(newRepair.kos || 0),
-        deposit: Number(newRepair.deposit || 0),
-        baki: kiraBaki(finalForm),
-        anggaranMin: newRepair.anggaranMin || "",
-        anggaranMax: newRepair.anggaranMax || "",
-        serviceItems: newRepair.serviceItems || [],
-        tarikhAmbil: newRepair.tarikhAmbil || "",
-        masaAmbil: newRepair.masaAmbil || "",
-      },
-    ]);
+    const insertPayload = {
+      ...newRepair,
+      jenisHarga: newRepair.jenisHarga,
+      kos: Number(newRepair.kos || 0),
+      kosKedai: Number(newRepair.kosKedai || 0),
+      deposit: Number(newRepair.deposit || 0),
+      baki: kiraBaki(finalForm),
+      anggaranMin: newRepair.anggaranMin || "",
+      anggaranMax: newRepair.anggaranMax || "",
+      serviceItems: newRepair.serviceItems || [],
+      tarikhAmbil: newRepair.tarikhAmbil || "",
+      masaAmbil: newRepair.masaAmbil || "",
+    };
+
+    const { data: insertedRepairs, error } = await supabase
+      .from("repairs")
+      .insert([insertPayload])
+      .select("*");
 
     if (error) {
       console.error("Supabase insert error:", error);
-      alert("Simpan gagal bro. Check table column Supabase.");
+      alert(`Simpan gagal bro. Error: ${error.message}`);
       return;
+    }
+
+    const insertedRepair = insertedRepairs?.[0];
+    if (insertedRepair) {
+      setData((prev) => [insertedRepair, ...prev]);
     }
 
     await fetchrepairs();
@@ -490,6 +538,7 @@ const finalForm = {
       anggaranMin: item.anggaranMin || "",
       anggaranMax: item.anggaranMax || "",
       kos: item.kos || "",
+      kosKedai: item.kosKedai || "",
       deposit: item.deposit || "",
       status: item.status || "Diterima",
       tarikhAmbil: getTarikhAmbil(item),
@@ -556,6 +605,13 @@ const finalForm = {
   }, 0);
 
   const monthlyDuitMasuk = monthlyData.reduce((total, item) => total + Number(item.deposit || 0), 0);
+
+  const monthlyKosKedai = monthlyData.reduce((total, item) => {
+    if (item.jenisHarga !== "Harga Final") return total;
+    return total + Number(item.kosKedai || 0);
+  }, 0);
+
+  const monthlyUntung = monthlyHargaFinal - monthlyKosKedai;
 
   const monthlyBaki = monthlyData.reduce((total, item) => {
     if (item.jenisHarga !== "Harga Final") return total;
@@ -748,6 +804,19 @@ const finalForm = {
             <>
               <Label text="Harga Final / Jumlah Kos (RM)" />
               <input style={styles.input} placeholder="Contoh: 1000" value={form.kos} onChange={(e) => setForm({ ...form, kos: e.target.value })} />
+
+              <Label text="Kos Kedai / Modal Barang (RM)" />
+              <input
+                style={styles.input}
+                placeholder="Contoh: 120"
+                value={form.kosKedai}
+                onChange={(e) => setForm({ ...form, kosKedai: e.target.value })}
+              />
+
+              <div style={styles.profitPreviewBox}>
+                <span>Anggaran Untung Repair Ini</span>
+                <b>{formatRM(Number(form.kos || 0) - Number(form.kosKedai || 0))}</b>
+              </div>
             </>
           )}
 
@@ -951,7 +1020,7 @@ const finalForm = {
           <div>
             <h2 style={styles.dashboardTitle}>📊 DASHBOARD BULANAN</h2>
             <p style={styles.dashboardSub}>
-              Kiraan basic guna data sedia ada. Duit masuk = bayaran/deposit yang direkod pada repair bulan dipilih.
+              Kiraan basic guna data sedia ada. Duit masuk = bayaran/deposit. Untung bersih = harga final tolak kos kedai/modal barang.
             </p>
           </div>
 
@@ -970,7 +1039,9 @@ const finalForm = {
           <DashboardBox title="Repair Bulan Ini" value={monthlyReceivedData.length} note="Ikut tarikh terima" />
           <DashboardBox title="Sudah Ambil" value={monthlyTakenData.length} note="Ikut tarikh ambil" />
           <DashboardBox title="Duit Masuk" value={formatRM(monthlyDuitMasuk)} note="Bayaran / deposit" green />
-          <DashboardBox title="Harga Final" value={formatRM(monthlyHargaFinal)} note="Jumlah kos final" blue />
+          <DashboardBox title="Harga Final" value={formatRM(monthlyHargaFinal)} note="Jumlah harga customer" blue />
+          <DashboardBox title="Kos Kedai" value={formatRM(monthlyKosKedai)} note="Modal / kos barang" red={monthlyKosKedai > 0} />
+          <DashboardBox title="Untung Bersih" value={formatRM(monthlyUntung)} note="Harga final - kos kedai" green />
           <DashboardBox title="Baki Tertunggak" value={formatRM(monthlyBaki)} note="Untuk harga final" red={monthlyBaki > 0} />
           <DashboardBox title="Total Record" value={monthlyData.length} note="Data aktif dashboard" />
         </div>
@@ -1009,6 +1080,8 @@ const finalForm = {
               <th>Tarikh/Masa Ambil</th>
               <th>Status</th>
               <th>Harga</th>
+              <th>Kos Kedai</th>
+              <th>Untung</th>
               <th>Bayaran</th>
               <th>Baki</th>
               <th>Dokumen</th>
@@ -1050,6 +1123,8 @@ const finalForm = {
                   </td>
                   <td><span style={styles.statusPill}>{item.status}</span></td>
                   <td>{getPaparanHarga(item)}</td>
+                  <td>{item.jenisHarga === "Harga Final" ? `RM ${item.kosKedai || 0}` : "-"}</td>
+                  <td style={styles.greenText}>{item.jenisHarga === "Harga Final" ? `RM ${Number(getJumlahKos(item) || 0) - Number(item.kosKedai || 0)}` : "-"}</td>
                   <td>RM {item.deposit || 0}</td>
                   <td style={item.jenisHarga === "Harga Final" && item.baki > 0 ? styles.redText : styles.greenText}>
                     {item.jenisHarga === "Harga Final" ? `RM ${item.baki}` : "Belum Ditentukan"}
@@ -1070,7 +1145,7 @@ const finalForm = {
               ))
             ) : (
               <tr>
-                <td colSpan="14" style={styles.noData}>
+                <td colSpan="16" style={styles.noData}>
                   Tiada data dijumpai.
                 </td>
               </tr>
@@ -1198,6 +1273,7 @@ const styles = {
   addItemBtn: { marginTop: 15, width: "100%", padding: 12, border: 0, borderRadius: 5, background: "#0f172a", color: "white", fontWeight: "bold", cursor: "pointer" },
   deleteBtn: { background: "#dc2626", color: "white", border: 0, borderRadius: 4, padding: "5px 8px", fontWeight: "bold", cursor: "pointer" },
   itemTable: { width: "100%", borderCollapse: "collapse", marginTop: 15, fontSize: 12, background: "white" },
+  profitPreviewBox: { marginTop: 12, background: "#dcfce7", color: "#15803d", border: "1px solid #bbf7d0", borderRadius: 7, padding: "11px 12px", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
   saveBtn: { marginTop: 20, width: "100%", padding: 14, border: 0, borderRadius: 5, background: "#16a34a", color: "white", fontWeight: "bold", fontSize: 15, cursor: "pointer" },
   updateBtn: { marginTop: 20, width: "100%", padding: 14, border: 0, borderRadius: 5, background: "#0057c2", color: "white", fontWeight: "bold", fontSize: 15, cursor: "pointer" },
   cancelBtn: { marginTop: 10, width: "100%", padding: 13, border: 0, borderRadius: 5, background: "#dc2626", color: "white", fontWeight: "bold", fontSize: 14, cursor: "pointer" },
@@ -1284,23 +1360,23 @@ blueLine: {
   iconFooter: { display: "flex", justifyContent: "center", gap: 14, color: "#475569", fontSize: 13, marginTop: 8, marginBottom: 8 },
   printBtn: { display: "block", margin: "0 auto", background: "#0057c2", color: "white", border: 0, padding: "14px 35px", borderRadius: 5, fontWeight: "bold", fontSize: 15, cursor: "pointer" },
   emptyReceipt: { textAlign: "center", padding: 80, color: "#64748b" },
-  dashboardCard: { marginTop: 25, background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 22, boxShadow: "0 4px 16px #0001" },
-  dashboardHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, marginBottom: 18, flexWrap: "wrap" },
-  dashboardTitle: { color: "#0057c2", fontSize: 20, margin: 0 },
-  dashboardSub: { margin: "6px 0 0", color: "#64748b", fontSize: 13, fontWeight: "bold" },
-  monthPickerBox: { display: "flex", alignItems: "center", gap: 10, background: "#f8fafc", border: "1px solid #dbeafe", borderRadius: 8, padding: 10 },
-  monthLabel: { color: "#0f172a", fontWeight: "bold", fontSize: 13 },
-  monthInput: { padding: "9px 12px", borderRadius: 5, border: "1px solid #cbd5e1", fontWeight: "bold", color: "#0f172a" },
-  dashboardGrid: { display: "grid", gridTemplateColumns: "repeat(6, minmax(150px, 1fr))", gap: 12 },
-  dashboardBox: { background: "#f8fafc", border: "1px solid #dbeafe", borderRadius: 8, padding: 15, minHeight: 88 },
-  dashboardBoxTitle: { display: "block", color: "#475569", fontSize: 13, fontWeight: "bold", marginBottom: 8 },
-  dashboardValue: { display: "block", color: "#0f172a", fontSize: 24 },
-  dashboardValueBlue: { display: "block", color: "#0057c2", fontSize: 24 },
-  dashboardValueGreen: { display: "block", color: "#16a34a", fontSize: 24 },
-  dashboardValueRed: { display: "block", color: "#dc2626", fontSize: 24 },
-  dashboardNote: { display: "block", color: "#64748b", marginTop: 6, fontWeight: "bold" },
-  statusDashboardGrid: { display: "grid", gridTemplateColumns: "repeat(6, minmax(130px, 1fr))", gap: 10, marginTop: 14 },
-  statusMiniBox: { background: "#eff6ff", color: "#0057c2", border: "1px solid #bfdbfe", borderRadius: 7, padding: "10px 12px", fontSize: 13, fontWeight: "bold", display: "flex", justifyContent: "space-between", gap: 8 },
+  dashboardCard: { marginTop: 25, background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 18, boxShadow: "0 4px 16px #0001", overflow: "hidden" },
+  dashboardHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 14, flexWrap: "wrap" },
+  dashboardTitle: { color: "#0057c2", fontSize: 18, margin: 0 },
+  dashboardSub: { margin: "5px 0 0", color: "#64748b", fontSize: 12, fontWeight: "bold" },
+  monthPickerBox: { display: "flex", alignItems: "center", gap: 8, background: "#f8fafc", border: "1px solid #dbeafe", borderRadius: 8, padding: 8 },
+  monthLabel: { color: "#0f172a", fontWeight: "bold", fontSize: 12 },
+  monthInput: { padding: "8px 10px", borderRadius: 5, border: "1px solid #cbd5e1", fontWeight: "bold", color: "#0f172a", fontSize: 12 },
+  dashboardGrid: { display: "grid", gridTemplateColumns: "repeat(8, minmax(0, 1fr))", gap: 8 },
+  dashboardBox: { background: "#f8fafc", border: "1px solid #dbeafe", borderRadius: 8, padding: "12px 8px", minHeight: 78, textAlign: "center" },
+  dashboardBoxTitle: { display: "block", color: "#475569", fontSize: 12, fontWeight: "bold", marginBottom: 6, lineHeight: 1.2 },
+  dashboardValue: { display: "block", color: "#0f172a", fontSize: 20 },
+  dashboardValueBlue: { display: "block", color: "#0057c2", fontSize: 20 },
+  dashboardValueGreen: { display: "block", color: "#16a34a", fontSize: 20 },
+  dashboardValueRed: { display: "block", color: "#dc2626", fontSize: 20 },
+  dashboardNote: { display: "block", color: "#64748b", marginTop: 5, fontWeight: "bold", fontSize: 11, lineHeight: 1.3 },
+  statusDashboardGrid: { display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8, marginTop: 12 },
+  statusMiniBox: { background: "#eff6ff", color: "#0057c2", border: "1px solid #bfdbfe", borderRadius: 7, padding: "9px 10px", fontSize: 12, fontWeight: "bold", display: "flex", justifyContent: "space-between", gap: 8 },
   databaseCard: { marginTop: 25, background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 22, boxShadow: "0 4px 16px #0001", overflowX: "auto" },
   databaseHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, marginBottom: 15 },
   databaseTitle: { color: "#0057c2", fontSize: 18, margin: 0 },
