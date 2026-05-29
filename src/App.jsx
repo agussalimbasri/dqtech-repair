@@ -826,10 +826,6 @@ const finalForm = {
           <Label text="Status Repair" />
           <select style={styles.input} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
             <option>Diterima</option>
-            <option>Dalam Pemeriksaan</option>
-            <option>Menunggu Confirmation Customer</option>
-            <option>Menunggu Parts</option>
-            <option>Dalam Repair</option>
             <option>Siap</option>
             <option>Sudah Ambil</option>
             <option>Cancel Repair</option>
@@ -1048,8 +1044,6 @@ const finalForm = {
 
         <div style={styles.statusDashboardGrid}>
           <div style={styles.statusMiniBox}>Diterima <b>{getStatusCount(monthlyData, "Diterima")}</b></div>
-          <div style={styles.statusMiniBox}>Dalam Repair <b>{getStatusCount(monthlyData, "Dalam Repair")}</b></div>
-          <div style={styles.statusMiniBox}>Menunggu Parts <b>{getStatusCount(monthlyData, "Menunggu Parts")}</b></div>
           <div style={styles.statusMiniBox}>Siap <b>{getStatusCount(monthlyData, "Siap")}</b></div>
           <div style={styles.statusMiniBox}>Sudah Ambil <b>{getStatusCount(monthlyData, "Sudah Ambil")}</b></div>
           <div style={styles.statusMiniBox}>Cancel <b>{getStatusCount(monthlyData, "Cancel Repair")}</b></div>
@@ -1375,7 +1369,7 @@ blueLine: {
   dashboardValueGreen: { display: "block", color: "#16a34a", fontSize: 20 },
   dashboardValueRed: { display: "block", color: "#dc2626", fontSize: 20 },
   dashboardNote: { display: "block", color: "#64748b", marginTop: 5, fontWeight: "bold", fontSize: 11, lineHeight: 1.3 },
-  statusDashboardGrid: { display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8, marginTop: 12 },
+  statusDashboardGrid: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, marginTop: 12 },
   statusMiniBox: { background: "#eff6ff", color: "#0057c2", border: "1px solid #bfdbfe", borderRadius: 7, padding: "9px 10px", fontSize: 12, fontWeight: "bold", display: "flex", justifyContent: "space-between", gap: 8 },
   databaseCard: { marginTop: 25, background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 22, boxShadow: "0 4px 16px #0001", overflowX: "auto" },
   databaseHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, marginBottom: 15 },
