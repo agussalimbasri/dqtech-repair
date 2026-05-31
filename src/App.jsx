@@ -580,6 +580,22 @@ const finalForm = {
     setServiceItem(emptyServiceItem);
   }
 
+  function printReceipt(item) {
+    if (!item?.id) {
+      window.print();
+      return;
+    }
+
+    const originalTitle = document.title;
+    document.title = item.id;
+
+    window.print();
+
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  }
+
   function handleSearch(value) {
     setSearch(value);
     setCurrentPage(1);
@@ -1001,7 +1017,7 @@ const finalForm = {
                 <span>👍 Kepuasan Pelanggan Diutamakan</span>
               </div>
 
-              <button style={styles.printBtn} onClick={() => window.print()}>
+              <button style={styles.printBtn} onClick={() => printReceipt(latest)}>
                 🖨️ CETAK / SAVE PDF
               </button>
             </div>
