@@ -168,12 +168,14 @@ function App() {
   function getDocumentType(item) {
     if (item.status === "Siap") return "INVOIS";
     if (item.status === "Sudah Ambil") return "RESIT BAYARAN";
+    if (item.status === "Pembelian") return "RESIT PEMBELIAN";
     return "RESIT PENERIMAAN PERANTI";
   }
 
   function getDocumentSub(item) {
     if (item.status === "Siap") return "Invois servis repair untuk makluman jumlah bayaran pelanggan.";
     if (item.status === "Sudah Ambil") return "Bukti bayaran dan pengambilan peranti oleh pelanggan.";
+    if (item.status === "Pembelian") return "Bukti pembelian barang oleh pelanggan.";
     return "Bukti penerimaan peranti untuk tujuan pemeriksaan / servis.";
   }
 
@@ -309,7 +311,7 @@ ${masaAmbil || "-"}`;
         "Bayaran / Deposit": bayaran,
         "Baki": baki,
         "Dokumen": getDocumentType(item),
-        "Butiran Servis": butiranServis,
+        "Butiran Servis / Barang": butiranServis,
       };
     });
 
@@ -370,7 +372,7 @@ ${masaAmbil || "-"}`;
 
   function tambahServiceItem() {
     if (!serviceItem.butiran) {
-      alert("Isi butiran servis dulu bro 😆");
+      alert(form.status === "Pembelian" ? "Isi jenis barang dulu bro 😆" : "Isi butiran servis dulu bro 😆");
       return;
     }
 
@@ -399,7 +401,12 @@ ${masaAmbil || "-"}`;
   }
 
   async function saveRepair() {
-    if (!form.nama || !form.telefon || !form.peranti || !form.masalah) {
+    if (form.status === "Pembelian") {
+      if (!form.nama || !form.telefon || (form.serviceItems || []).length === 0) {
+        alert("Untuk pembelian, isi nama, telefon dan tambah sekurang-kurangnya 1 jenis barang dulu bro 😆");
+        return;
+      }
+    } else if (!form.nama || !form.telefon || !form.peranti || !form.masalah) {
       alert("Isi nama, telefon, peranti dan masalah dulu bro 😆");
       return;
     }
@@ -418,6 +425,8 @@ const autoHargaFinal = form.jenisHarga === "Harga Final" || jumlahHargaFinal > 0
 
 const finalForm = {
   ...form,
+  peranti: form.status === "Pembelian" ? form.peranti || "Pembelian Barang" : form.peranti,
+  masalah: form.status === "Pembelian" ? form.masalah || "Pembelian / jualan barang" : form.masalah,
   jenisHarga: autoHargaFinal ? "Harga Final" : form.jenisHarga,
   kos: jumlahHargaFinal,
   kosKedai: jumlahKosKedai,
@@ -701,7 +710,7 @@ const finalForm = {
       <div style={styles.mainGrid}>
         <div style={styles.card}>
           <h2 style={styles.formTitle}>
-            {editId ? "✏️ EDIT REPAIR FORM" : "🛠️ SERVIS REPAIR FORM"}
+            {editId ? "✏️ EDIT REKOD" : form.status === "Pembelian" ? "🛒 FORM PEMBELIAN" : "🛠️ SERVIS REPAIR FORM"}
           </h2>
 
           <div style={styles.titleLine}></div>
@@ -718,22 +727,26 @@ const finalForm = {
           <Label text="No. Telefon" />
           <input style={styles.input} placeholder="No telefon" value={form.telefon} onChange={(e) => setForm({ ...form, telefon: e.target.value })} />
 
-          <Label text="Jenis Peranti" />
-          <input style={styles.input} placeholder="Contoh: Laptop / Desktop / PS5" value={form.peranti} onChange={(e) => setForm({ ...form, peranti: e.target.value })} />
+          {form.status !== "Pembelian" && (
+            <>
+              <Label text="Jenis Peranti" />
+              <input style={styles.input} placeholder="Contoh: Laptop / Desktop / PS5" value={form.peranti} onChange={(e) => setForm({ ...form, peranti: e.target.value })} />
 
-          <Label text="Model / Jenama" />
-          <input style={styles.input} placeholder="Contoh: Dell Optiplex / Sony PS5" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+              <Label text="Model / Jenama" />
+              <input style={styles.input} placeholder="Contoh: Dell Optiplex / Sony PS5" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
 
-          <Label text="Masalah Peranti" />
-          <textarea style={styles.textarea} placeholder="Contoh: Laptop tidak hidup / no display / liquid damage" value={form.masalah} onChange={(e) => setForm({ ...form, masalah: e.target.value })} />
+              <Label text="Masalah Peranti" />
+              <textarea style={styles.textarea} placeholder="Contoh: Laptop tidak hidup / no display / liquid damage" value={form.masalah} onChange={(e) => setForm({ ...form, masalah: e.target.value })} />
+            </>
+          )}
 
           <div style={styles.serviceBox}>
-            <h3 style={styles.serviceTitle}>BUTIRAN SERVIS / ITEM REPAIR</h3>
+            <h3 style={styles.serviceTitle}>{form.status === "Pembelian" ? "BUTIRAN PEMBELIAN / BARANG" : "BUTIRAN SERVIS / ITEM REPAIR"}</h3>
 
-            <Label text="Butiran Servis" />
+            <Label text={form.status === "Pembelian" ? "Jenis Barang" : "Butiran Servis"} />
             <input
               style={styles.input}
-              placeholder='Contoh: SSD 2.5" 256GB - S/N BTPY708605DC256D'
+              placeholder={form.status === "Pembelian" ? 'Contoh: Charger Lenovo 65W / SSD 512GB / Keyboard' : 'Contoh: SSD 2.5" 256GB - S/N BTPY708605DC256D'}
               value={serviceItem.butiran}
               onChange={(e) => setServiceItem({ ...serviceItem, butiran: e.target.value })}
             />
@@ -761,7 +774,7 @@ const finalForm = {
             </div>
 
             <button style={styles.addItemBtn} onClick={tambahServiceItem}>
-              + TAMBAH ITEM SERVIS
+              {form.status === "Pembelian" ? "+ TAMBAH BARANG" : "+ TAMBAH ITEM SERVIS"}
             </button>
 
             {(form.serviceItems || []).length > 0 && (
@@ -844,6 +857,7 @@ const finalForm = {
             <option>Diterima</option>
             <option>Siap</option>
             <option>Sudah Ambil</option>
+            <option>Pembelian</option>
             <option>Cancel Repair</option>
           </select>
 
@@ -914,37 +928,72 @@ const finalForm = {
                   <Info label="Nama Pelanggan" value={latest.nama} />
                   <Info label="No. Telefon" value={latest.telefon} />
                   <Info
-                    label={latest.status === "Sudah Ambil" ? "Tarikh Ambil" : "Tarikh Terima"}
-                    value={latest.status === "Sudah Ambil" ? getTarikhAmbil(latest) || "-" : latest.tarikh || "-"}
+                    label={
+                      latest.status === "Pembelian"
+                        ? "Tarikh Pembelian"
+                        : latest.status === "Sudah Ambil"
+                        ? "Tarikh Ambil"
+                        : "Tarikh Terima"
+                    }
+                    value={
+                      latest.status === "Pembelian"
+                        ? latest.tarikh || "-"
+                        : latest.status === "Sudah Ambil"
+                        ? getTarikhAmbil(latest) || "-"
+                        : latest.tarikh || "-"
+                    }
                   />
                   <Info
-                    label={latest.status === "Sudah Ambil" ? "Masa Ambil" : "Masa Terima"}
-                    value={latest.status === "Sudah Ambil" ? getMasaAmbil(latest) || "-" : latest.masa || "-"}
+                    label={
+                      latest.status === "Pembelian"
+                        ? "Masa Pembelian"
+                        : latest.status === "Sudah Ambil"
+                        ? "Masa Ambil"
+                        : "Masa Terima"
+                    }
+                    value={
+                      latest.status === "Pembelian"
+                        ? latest.masa || "-"
+                        : latest.status === "Sudah Ambil"
+                        ? getMasaAmbil(latest) || "-"
+                        : latest.masa || "-"
+                    }
                   />
                 </div>
 
                 <div style={styles.infoBox}>
-                  <h3 style={styles.boxTitle}>MAKLUMAT PERANTI</h3>
-                  <Info label="Jenis Peranti" value={latest.peranti} />
-                  <Info label="Model / Jenama" value={latest.model || "-"} />
-                  <Info label="Status Repair" value={latest.status} blue />
+                  <h3 style={styles.boxTitle}>{latest.status === "Pembelian" ? "MAKLUMAT PEMBELIAN" : "MAKLUMAT PERANTI"}</h3>
+                  {latest.status === "Pembelian" ? (
+                    <>
+                      <Info label="Jenis Transaksi" value="Pembelian Barang" />
+                      <Info label="Status" value={latest.status} blue />
+                    </>
+                  ) : (
+                    <>
+                      <Info label="Jenis Peranti" value={latest.peranti} />
+                      <Info label="Model / Jenama" value={latest.model || "-"} />
+                      <Info label="Status Repair" value={latest.status} blue />
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="problemBox" style={styles.problemBox}>
-                <h3 style={styles.boxTitle}>MASALAH PERANTI</h3>
-                <p>{latest.masalah}</p>
-              </div>
+              {latest.status !== "Pembelian" && (
+                <div className="problemBox" style={styles.problemBox}>
+                  <h3 style={styles.boxTitle}>MASALAH PERANTI</h3>
+                  <p>{latest.masalah}</p>
+                </div>
+              )}
 
               {(latest.serviceItems || []).length > 0 && (
                 <div className="serviceReceiptBox" style={styles.serviceReceiptBox}>
-                  <h3 style={styles.boxTitle}>BUTIRAN SERVIS</h3>
+                  <h3 style={styles.boxTitle}>{latest.status === "Pembelian" ? "BUTIRAN BARANG" : "BUTIRAN SERVIS"}</h3>
 
                   <table style={styles.receiptItemTable}>
                     <thead>
                       <tr>
                         <th>No</th>
-                        <th>Butiran Servis</th>
+                        <th>{latest.status === "Pembelian" ? "Jenis Barang" : "Butiran Servis"}</th>
                         <th>Warranty</th>
                         <th>Harga</th>
                       </tr>
@@ -966,7 +1015,7 @@ const finalForm = {
 
               <div className="paymentBox" style={styles.paymentBox}>
                 <h3 style={styles.boxTitle}>
-                  {latest.status === "Sudah Ambil" ? "RINGKASAN BAYARAN" : "RINGKASAN KOS"}
+                  {latest.status === "Pembelian" ? "RINGKASAN PEMBAYARAN" : latest.status === "Sudah Ambil" ? "RINGKASAN BAYARAN" : "RINGKASAN KOS"}
                 </h3>
 
                 <PayRow label="Status Harga" value={latest.jenisHarga} />
@@ -1000,7 +1049,9 @@ const finalForm = {
 
               <div className="noteBox" style={styles.noteBox}>
   <b>Nota:</b>{" "}
-  {latest.status === "Siap"
+  {latest.status === "Pembelian"
+    ? "Barang telah dibeli oleh pelanggan berdasarkan butiran dan bayaran yang direkodkan di atas. Simpan resit ini sebagai bukti pembelian."
+    : latest.status === "Siap"
     ? "Peranti telah siap. Sila jelaskan baki bayaran sebelum atau semasa pengambilan peranti. Warranty bermula dari tarikh peranti siap dibaiki / pelanggan dimaklumkan. Pihak kami tidak akan bertanggungjawab sekiranya berlaku kehilangan, kerosakan atau tuntutan warranty terhadap peranti yang tidak dituntut melebihi 60 hari dari tarikh pelanggan dimaklumkan bahawa peranti telah siap dibaiki."
     : latest.status === "Sudah Ambil"
     ? "Peranti telah diserahkan kepada pelanggan dan bayaran telah direkodkan berdasarkan maklumat di atas. Warranty dikira bermula dari tarikh peranti siap dibaiki / pelanggan dimaklumkan."
@@ -1062,17 +1113,18 @@ const finalForm = {
           <div style={styles.statusMiniBox}>Diterima <b>{getStatusCount(monthlyData, "Diterima")}</b></div>
           <div style={styles.statusMiniBox}>Siap <b>{getStatusCount(monthlyData, "Siap")}</b></div>
           <div style={styles.statusMiniBox}>Sudah Ambil <b>{getStatusCount(monthlyData, "Sudah Ambil")}</b></div>
+          <div style={styles.statusMiniBox}>Pembelian <b>{getStatusCount(monthlyData, "Pembelian")}</b></div>
           <div style={styles.statusMiniBox}>Cancel <b>{getStatusCount(monthlyData, "Cancel Repair")}</b></div>
         </div>
       </div>
 
       <div style={styles.databaseCard}>
         <div style={styles.databaseHeader}>
-          <h2 style={styles.databaseTitle}>SENARAI REPAIR / DATABASE</h2>
+          <h2 style={styles.databaseTitle}>SENARAI REPAIR / PEMBELIAN / DATABASE</h2>
 
           <input
             style={styles.searchInput}
-            placeholder="Cari nama / telefon / model / no repair..."
+            placeholder="Cari nama / telefon / model / barang / no repair..."
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
           />
@@ -1084,7 +1136,7 @@ const finalForm = {
               <th>No Repair</th>
               <th>Nama</th>
               <th>Telefon</th>
-              <th>Peranti</th>
+              <th>Peranti / Transaksi</th>
               <th>Model</th>
               <th>Tarikh/Masa Terima</th>
               <th>Tarikh/Masa Ambil</th>
@@ -1121,16 +1173,35 @@ const finalForm = {
     {item.telefon}
   </a>
 </td>
-                  <td>{item.peranti}</td>
+                  <td>{item.status === "Pembelian" ? "Pembelian Barang" : item.peranti}</td>
                   <td>{item.model}</td>
-                  <td>
-                    <div>{item.tarikh || "-"}</div>
-                    <div>{item.masa || "-"}</div>
-                  </td>
-                  <td>
-                    <div>{getTarikhAmbil(item) || "-"}</div>
-                    <div>{getMasaAmbil(item) || "-"}</div>
-                  </td>
+<td>
+  <div>
+    {item.status === "Pembelian"
+      ? "-"
+      : item.tarikh || "-"}
+  </div>
+
+  <div>
+    {item.status === "Pembelian"
+      ? "-"
+      : item.masa || "-"}
+  </div>
+</td>
+
+<td>
+  <div>
+    {item.status === "Pembelian"
+      ? item.tarikh || "-"
+      : getTarikhAmbil(item) || "-"}
+  </div>
+
+  <div>
+    {item.status === "Pembelian"
+      ? item.masa || "-"
+      : getMasaAmbil(item) || "-"}
+  </div>
+</td>
                   <td><span style={styles.statusPill}>{item.status}</span></td>
                   <td>{getPaparanHarga(item)}</td>
                   <td>{item.jenisHarga === "Harga Final" ? `RM ${item.kosKedai || 0}` : "-"}</td>
@@ -1165,7 +1236,7 @@ const finalForm = {
 
         <div style={styles.paginationBox}>
           <div style={styles.paginationInfo}>
-            Paparan {result.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + rowsPerPage, result.length)} daripada {result.length} repair
+            Paparan {result.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + rowsPerPage, result.length)} daripada {result.length} rekod
           </div>
 
           <div style={styles.paginationButtons}>
@@ -1385,7 +1456,7 @@ blueLine: {
   dashboardValueGreen: { display: "block", color: "#16a34a", fontSize: 20 },
   dashboardValueRed: { display: "block", color: "#dc2626", fontSize: 20 },
   dashboardNote: { display: "block", color: "#64748b", marginTop: 5, fontWeight: "bold", fontSize: 11, lineHeight: 1.3 },
-  statusDashboardGrid: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, marginTop: 12 },
+  statusDashboardGrid: { display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 8, marginTop: 12 },
   statusMiniBox: { background: "#eff6ff", color: "#0057c2", border: "1px solid #bfdbfe", borderRadius: 7, padding: "9px 10px", fontSize: 12, fontWeight: "bold", display: "flex", justifyContent: "space-between", gap: 8 },
   databaseCard: { marginTop: 25, background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 22, boxShadow: "0 4px 16px #0001", overflowX: "auto" },
   databaseHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, marginBottom: 15 },
