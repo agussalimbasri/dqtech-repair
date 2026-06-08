@@ -1055,7 +1055,17 @@ const finalForm = {
     ? "Peranti telah siap. Sila jelaskan baki bayaran sebelum atau semasa pengambilan peranti. Warranty bermula dari tarikh peranti siap dibaiki / pelanggan dimaklumkan. Pihak kami tidak akan bertanggungjawab sekiranya berlaku kehilangan, kerosakan atau tuntutan warranty terhadap peranti yang tidak dituntut melebihi 60 hari dari tarikh pelanggan dimaklumkan bahawa peranti telah siap dibaiki."
     : latest.status === "Sudah Ambil"
     ? "Peranti telah diserahkan kepada pelanggan dan bayaran telah direkodkan berdasarkan maklumat di atas. Warranty dikira bermula dari tarikh peranti siap dibaiki / pelanggan dimaklumkan."
-    : "Harga yang dipaparkan adalah berdasarkan status semasa. Jika peranti belum diperiksa sepenuhnya, kos sebenar mungkin berubah selepas pemeriksaan lanjut dan akan dimaklumkan kepada pelanggan sebelum kerja repair diteruskan."}
+: (
+  <>
+     <div style={{ marginTop: "6px" }}>
+          1. Harga yang dipaparkan adalah berdasarkan status semasa. Jika peranti belum diperiksa sepenuhnya, kos sebenar mungkin berubah selepas pemeriksaan lanjut dan akan dimaklumkan kepada pelanggan sebelum kerja repair diteruskan.
+        </div>
+
+        <div style={{ marginTop: "6px" }}>
+          2. Pihak kami tidak akan bertanggungjawab sekiranya berlaku kerosakan atau kehilangan pada peranti termasuk aksesori yang ditinggalkan bersama peranti yang tidak dituntut melebihi 90 hari dari tarikh dihantar.
+        </div>
+      </>
+    )}
 </div>
 
               <div style={styles.thanks}>Terima kasih kerana menggunakan servis DQ Tech 😄</div>
@@ -1436,7 +1446,17 @@ blueLine: {
   payRow: { display: "flex", justifyContent: "space-between", padding: "10px 18px", fontSize: 13, gap: 10 },
   balanceRow: { display: "flex", justifyContent: "space-between", padding: "12px 18px", background: "#eff6ff", color: "#0057c2", fontWeight: "bold", fontSize: 18, gap: 10 },
   paidRow: { display: "flex", justifyContent: "space-between", padding: "12px 18px", background: "#dcfce7", color: "#15803d", fontWeight: "bold", fontSize: 18, gap: 10 },
-  noteBox: { marginTop: 14, border: "1px solid #fde68a", background: "#fffbeb", color: "#78350f", borderRadius: 8, padding: 10, fontSize: 12, lineHeight: 1.35 },
+ noteBox: {
+  marginTop: 14,
+  border: "1px solid #fde68a",
+  background: "#fffbeb",
+  color: "#78350f",
+  borderRadius: 8,
+  padding: 10,
+  fontSize: 12,
+  lineHeight: 1.35,
+  textAlign: "left"
+},
   thanks: { textAlign: "center", margin: "10px 0", fontSize: 13 },
   iconFooter: { display: "flex", justifyContent: "center", gap: 14, color: "#475569", fontSize: 13, marginTop: 8, marginBottom: 8 },
   printBtn: { display: "block", margin: "0 auto", background: "#0057c2", color: "white", border: 0, padding: "14px 35px", borderRadius: 5, fontWeight: "bold", fontSize: 15, cursor: "pointer" },
